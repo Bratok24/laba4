@@ -1,10 +1,12 @@
-name: Build Release
+name: Build and Release
 
 on:
   push:
     branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
+
+# Даем права на создание релиза
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -25,12 +27,24 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config Release
 
-    - name: Upload Artifact
-      uses: actions/upload-artifact@v4
+    # Переименовываем файлы, чтобы в релизе они не путались и не перезаписывали друг друга
+    - name: Rename Linux binary
+      if: runner.os == 'Linux'
+      run: mv build/lab4 build/lab4-linux
+
+    - name: Rename Windows binary
+      if: runner.os == 'Windows'
+      run: mv build/Release/lab4.exe build/lab4-windows.exe
+
+    # Создаем сам релиз и прикрепляем файлы
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
       with:
-        name: lab4-release-${{ matrix.os }}
-        path: |
-          build/lab4
-          build/Release/lab4.exe
-          build/Debug/lab4.exe
-        if-no-files-found: ignore
+        # Автоматически генерируем тег на основе номера запуска (v1.0.1, v1.0.2 и т.д.)
+        tag_name: v1.0.${{ github.run_number }}
+        name: Release v1.0.${{ github.run_number }}
+        draft: false
+        prerelease: false
+        files: |
+          build/lab4-linux
+          build/lab4-windows.exe
